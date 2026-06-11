@@ -13,6 +13,7 @@ import {
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { fetchCurrentUser, fetchSavedJobs, DbUser } from '@/lib/api-helper';
 
@@ -30,7 +31,6 @@ const navItems: NavItem[] = [
   { href: '/jobs/saved', label: 'Saved Jobs', icon: Bookmark },
   { href: '/profile', label: 'My Profile', icon: User },
   { href: '/resume', label: 'Resume', icon: FileText },
-  { href: '/notifications', label: 'Notifications', icon: Bell, badge: 3 },
 ];
 
 const recruiterItems: NavItem[] = [
@@ -159,7 +159,7 @@ export default function Sidebar({ isRecruiter = false }: SidebarProps) {
   const allItems = [...navItems, ...(isRecruiter ? recruiterItems : [])];
 
   const getInitials = () => {
-    if (!user) return 'RS';
+    if (!user) return 'U';
     const names = user.fullName.split(' ');
     if (names.length >= 2) return `${names[0][0]}${names[1][0]}`;
     return names[0].slice(0, 2).toUpperCase();
@@ -228,12 +228,16 @@ export default function Sidebar({ isRecruiter = false }: SidebarProps) {
 
       {/* User Profile */}
       <div className={cn(
-        'flex items-center gap-3 p-4 border-t border-sidebar-border transition-all',
+        'flex items-center gap-3 p-4 border-t border-sidebar-border transition-all flex-shrink-0 bg-sidebar sticky bottom-0 z-10',
         collapsed && 'justify-center'
       )}>
-        <Avatar className="w-8 h-8 flex-shrink-0 ring-2 ring-primary/20">
-          <AvatarFallback className="text-xs gradient-brand text-white">{getInitials()}</AvatarFallback>
-        </Avatar>
+        {user ? (
+          <Avatar className="w-8 h-8 flex-shrink-0 ring-2 ring-primary/20">
+            <AvatarFallback className="text-xs gradient-brand text-white">{getInitials()}</AvatarFallback>
+          </Avatar>
+        ) : (
+          <Skeleton className="w-8 h-8 rounded-full bg-sidebar-accent/50 animate-pulse flex-shrink-0" />
+        )}
         <AnimatePresence>
           {!collapsed && (
             <motion.div
@@ -242,8 +246,18 @@ export default function Sidebar({ isRecruiter = false }: SidebarProps) {
               exit={{ opacity: 0 }}
               className="flex-1 min-w-0"
             >
-              <p className="text-sm font-medium truncate">{user?.fullName || 'Rahul Sharma'}</p>
-              <p className="text-xs text-muted-foreground truncate">{user?.role === 'recruiter' ? 'Recruiter' : 'Senior Engineer'}</p>
+              {user ? (
+                <>
+                  <p className="text-sm font-medium truncate">{user.fullName}</p>
+                  {user.role === 'recruiter' && (
+                    <p className="text-xs text-muted-foreground truncate">Recruiter</p>
+                  )}
+                </>
+              ) : (
+                <div className="space-y-1">
+                  <Skeleton className="h-4 w-24 bg-sidebar-accent/50 animate-pulse" />
+                </div>
+              )}
             </motion.div>
           )}
         </AnimatePresence>

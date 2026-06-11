@@ -19,9 +19,9 @@ export default function LayoutWrapper({ children }: { children: React.ReactNode 
   const isRecruiter = pathname.startsWith('/recruiter') || pathname.startsWith('/candidates');
 
   return (
-    <div className="flex min-h-screen bg-background">
+    <div className="flex min-h-screen lg:h-screen lg:overflow-hidden bg-background">
       <Sidebar isRecruiter={isRecruiter} />
-      <div className="flex-1 flex flex-col min-w-0 mobile-header-offset page-content">
+      <div className="flex-1 flex flex-col min-w-0 lg:h-screen lg:overflow-y-auto mobile-header-offset page-content scrollbar-thin">
         <Navbar />
         {children}
       </div>
