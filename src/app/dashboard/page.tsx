@@ -1,12 +1,13 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
 import {
   TrendingUp, Briefcase, Bookmark, Eye, MessageSquare,
   Sparkles, ArrowRight, CheckCircle2, XCircle,
-  Calendar, Star, ChevronRight, Zap, History
+  Calendar, Star, ChevronRight, Zap, History,
+  LayoutDashboard, BellOff
 } from 'lucide-react';
 import { getVisitedJobs, clearVisitedJobs, VisitedJob } from '@/lib/visited-jobs';
 import { Badge } from '@/components/ui/badge';
@@ -16,7 +17,6 @@ import { Skeleton } from '@/components/ui/skeleton';
 import {
   AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer
 } from 'recharts';
-import { notifications } from '@/lib/data';
 import { cn } from '@/lib/utils';
 import { useRouter } from 'next/navigation';
 import { calculateCompletion } from '@/lib/profile-completion';
@@ -25,21 +25,12 @@ import {
   fetchProfile,
   fetchApplications,
   fetchSavedJobs,
+  fetchJobs,
   DbUser,
   DbProfile,
   DbApplication,
   DbSavedJob
 } from '@/lib/api-helper';
-
-const activityChartData = [
-  { day: 'Mon', applications: 3, views: 12 },
-  { day: 'Tue', applications: 5, views: 18 },
-  { day: 'Wed', applications: 2, views: 8 },
-  { day: 'Thu', applications: 7, views: 25 },
-  { day: 'Fri', applications: 4, views: 15 },
-  { day: 'Sat', applications: 1, views: 5 },
-  { day: 'Sun', applications: 2, views: 10 },
-];
 
 const matchDistData = [
   { range: '90-100%', count: 8, color: '#10b981' },
@@ -132,6 +123,7 @@ export default function DashboardPage() {
   const [applications, setApplications] = useState<DbApplication[]>([]);
   const [savedJobs, setSavedJobs] = useState<DbSavedJob[]>([]);
   const [visitedJobs, setVisitedJobs] = useState<VisitedJob[]>([]);
+  const [notificationsList, setNotificationsList] = useState<any[]>([]);
 
   const handleClearHistory = () => {
     clearVisitedJobs();
@@ -159,6 +151,31 @@ export default function DashboardPage() {
           setApplications(apps);
           setSavedJobs(saved);
           setVisitedJobs(getVisitedJobs());
+          
+          // Load notifications from recent job openings
+          const allJobs = await fetchJobs();
+          if (allJobs && allJobs.length > 0) {
+            // Get 5 most recent jobs
+            const recentJobs = [...allJobs]
+              .sort((a, b) => new Date(b.createdAt || b.postedAt).getTime() - new Date(a.createdAt || a.postedAt).getTime())
+              .slice(0, 5);
+            
+            // Sort in ascending order of posting date (oldest first)
+            recentJobs.sort((a, b) => new Date(a.createdAt || a.postedAt).getTime() - new Date(b.createdAt || b.postedAt).getTime());
+            
+            // Map to notifications
+            const jobNotifications = recentJobs.map((job) => ({
+              id: job._id,
+              type: 'job_match' as const,
+              title: `New Job: ${job.title}`,
+              message: `${job.company} is hiring for ${job.title} in ${job.location}. Skills: ${job.skills.slice(0, 3).join(', ')}`,
+              time: formatTime(job.createdAt || job.postedAt),
+              read: false
+            }));
+            setNotificationsList(jobNotifications);
+          } else {
+            setNotificationsList([]);
+          }
         } else {
           router.push('/sign-in');
         }
@@ -170,6 +187,32 @@ export default function DashboardPage() {
     }
     loadData();
   }, [router]);
+
+  // Generate last 7 days chart data based on actual visits and applications
+  const activityChartData = useMemo(() => {
+    return Array.from({ length: 7 }).map((_, i) => {
+      const d = new Date();
+      d.setDate(d.getDate() - (6 - i)); // 6 days ago, ..., today
+      const dayName = d.toLocaleDateString('en-US', { weekday: 'short' });
+      const dateStr = d.toDateString();
+      
+      const appCount = applications.filter(app => {
+        const appDate = new Date(app.appliedAt);
+        return appDate.toDateString() === dateStr;
+      }).length;
+      
+      const visitCount = visitedJobs.filter(job => {
+        const visitDate = new Date(job.visitedAt);
+        return visitDate.toDateString() === dateStr;
+      }).length;
+      
+      return {
+        day: dayName,
+        applications: appCount,
+        views: visitCount
+      };
+    });
+  }, [applications, visitedJobs]);
 
   // Compute stats
   const appliedCount = applications.length;
@@ -210,8 +253,9 @@ export default function DashboardPage() {
             className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
           >
             <div>
-              <h1 className="text-2xl font-bold flex items-center gap-1.5" style={{ fontFamily: 'Plus Jakarta Sans, sans-serif' }}>
-                Welcome back, {loading ? <Skeleton className="w-24 h-6 inline-block animate-pulse" /> : (user?.fullName.split(' ')[0] || 'User')} 👋
+              <h1 className="text-2xl font-bold flex items-center gap-2" style={{ fontFamily: 'Plus Jakarta Sans, sans-serif' }}>
+                <LayoutDashboard className="w-6 h-6 text-primary" />
+                Welcome back, {loading ? <Skeleton className="w-24 h-6 inline-block animate-pulse" /> : (user?.fullName.split(' ')[0] || 'User')}
               </h1>
               <p className="text-muted-foreground text-sm mt-1">
                 You have <strong className="text-foreground">{loading ? '...' : (profile?.skills?.length ? '12 new job matches' : 'no job matches yet')}</strong> and <strong className="text-foreground">3 unread messages</strong> today.
@@ -312,19 +356,16 @@ export default function DashboardPage() {
           )}
 
           {/* Stats Grid */}
-          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
             {loading ? (
-              Array.from({ length: 4 }).map((_, i) => <StatCardSkeleton key={i} />)
+              Array.from({ length: 3 }).map((_, i) => <StatCardSkeleton key={i} />)
             ) : (
               <>
-                <Link href="/applications" className="block cursor-pointer">
-                  <StatCard icon={Briefcase} label="Applications Sent" value={appliedCount} change="+2 this week" color="#6366f1" />
-                </Link>
-                <Link href="/applications" className="block cursor-pointer">
-                  <StatCard icon={Calendar} label="Interviews" value={interviewCount} change="scheduled" color="#10b981" />
-                </Link>
-                <Link href="/applications" className="block cursor-pointer">
-                  <StatCard icon={Star} label="Offers Received" value={offerCount} color="#f59e0b" />
+                <div className="block">
+                  <StatCard icon={Eye} label="Visited Job Openings" value={visitedJobs.length} color="#6366f1" />
+                </div>
+                <Link href="/profile" className="block cursor-pointer">
+                  <StatCard icon={Sparkles} label="Total Skills" value={profile?.skills?.length || 0} color="#10b981" />
                 </Link>
                 <Link href="/jobs/saved" className="block cursor-pointer">
                   <StatCard icon={Bookmark} label="Saved Jobs" value={savedCount} color="#8b5cf6" />
@@ -339,7 +380,7 @@ export default function DashboardPage() {
               <div className="flex items-center justify-between mb-5">
                 <div>
                   <h3 className="font-semibold">Activity Overview</h3>
-                  <p className="text-xs text-muted-foreground mt-0.5">Applications & profile views this week</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">Applications & visited jobs this week</p>
                 </div>
                 <Badge variant="secondary" className="rounded-lg text-xs">Last 7 days</Badge>
               </div>
@@ -358,7 +399,7 @@ export default function DashboardPage() {
                   <XAxis dataKey="day" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
                   <YAxis tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
                   <Tooltip contentStyle={{ borderRadius: '12px', border: '1px solid var(--border)', fontSize: 12 }} />
-                  <Area type="monotone" dataKey="views" stroke="#8b5cf6" fill="url(#colorViews)" strokeWidth={2} name="Views" />
+                  <Area type="monotone" dataKey="views" stroke="#8b5cf6" fill="url(#colorViews)" strokeWidth={2} name="Visited Jobs" />
                   <Area type="monotone" dataKey="applications" stroke="#6366f1" fill="url(#colorApps)" strokeWidth={2} name="Applications" />
                 </AreaChart>
               </ResponsiveContainer>
@@ -482,23 +523,44 @@ export default function DashboardPage() {
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
                   <h3 className="font-semibold">Notifications</h3>
-                  <Badge className="h-5 px-1.5 text-[10px] gradient-brand text-white border-0">3 new</Badge>
+                  {notificationsList.length > 0 && (
+                    <Badge className="h-5 px-1.5 text-[10px] gradient-brand text-white border-0">
+                      {notificationsList.filter(n => !n.read).length} new
+                    </Badge>
+                  )}
                 </div>
                 <Link href="/notifications" className="text-xs text-primary hover:underline flex items-center gap-1">
                   See all <ChevronRight className="w-3 h-3" />
                 </Link>
               </div>
               <div className="space-y-3">
-                {notifications.slice(0, 5).map((notif) => (
-                  <div key={notif.id} className={cn('flex items-start gap-3 p-2.5 rounded-xl transition-colors', !notif.read && 'bg-primary/5 border border-primary/10')}>
-                    <div className={cn('w-2 h-2 rounded-full mt-1.5 flex-shrink-0', !notif.read ? 'bg-primary' : 'bg-transparent')} />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium">{notif.title}</p>
-                      <p className="text-xs text-muted-foreground leading-relaxed">{notif.message}</p>
-                      <p className="text-[11px] text-muted-foreground mt-1">{notif.time}</p>
+                {loading ? (
+                  Array.from({ length: 3 }).map((_, i) => (
+                    <div key={i} className="flex items-start gap-3 p-2.5">
+                      <Skeleton className="w-2 h-2 rounded-full mt-1.5" />
+                      <div className="flex-1 space-y-2">
+                        <Skeleton className="w-1/3 h-4" />
+                        <Skeleton className="w-full h-3" />
+                      </div>
                     </div>
+                  ))
+                ) : notificationsList.length === 0 ? (
+                  <div className="text-center py-8 text-sm text-muted-foreground flex flex-col items-center justify-center gap-2">
+                    <BellOff className="w-8 h-8 text-muted-foreground/40 animate-pulse" />
+                    <p>No notifications yet</p>
                   </div>
-                ))}
+                ) : (
+                  notificationsList.slice(0, 5).map((notif) => (
+                    <div key={notif.id} className={cn('flex items-start gap-3 p-2.5 rounded-xl transition-colors', !notif.read && 'bg-primary/5 border border-primary/10')}>
+                      <div className={cn('w-2 h-2 rounded-full mt-1.5 flex-shrink-0', !notif.read ? 'bg-primary' : 'bg-transparent')} />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium">{notif.title}</p>
+                        <p className="text-xs text-muted-foreground leading-relaxed">{notif.message}</p>
+                        <p className="text-[11px] text-muted-foreground mt-1">{notif.time}</p>
+                      </div>
+                    </div>
+                  ))
+                )}
               </div>
             </div>
           </div>
