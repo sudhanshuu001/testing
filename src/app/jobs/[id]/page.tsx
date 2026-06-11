@@ -242,30 +242,27 @@ export default function JobDetailPage() {
     }
   };
 
-  const handleApply = async () => {
+  const handleApply = () => {
     if (!user || !job || actionLoading) return;
 
+    const applyUrl = job.applyUrl || getPortalSearchUrl(job.source || 'Google Jobs', job.title, job.company);
+
     setActionLoading(true);
-    try {
-      // 1. Retrieve the direct verified URL, fallback to portal search if not available
-      const applyUrl = job.applyUrl || getPortalSearchUrl(job.source || 'Google Jobs', job.title, job.company);
+    // Record application in database in the background without blocking the redirect gesture
+    applyToJob(user._id, job._id)
+      .then((app) => {
+        if (app) setApplied(true);
+      })
+      .catch((err) => console.error("Failed to record application in background:", err))
+      .finally(() => setActionLoading(false));
 
-      // 2. Save application record in JobFusion (background)
-      await applyToJob(user._id, job._id);
-      setApplied(true);
+    // Show redirect toast
+    setToastMessage(`Redirecting you to the official verified application page...`);
+    setShowSuccessToast(true);
+    setTimeout(() => setShowSuccessToast(false), 5000);
 
-      // 3. Show redirect toast
-      setToastMessage(`Redirecting you to the official verified application page...`);
-      setShowSuccessToast(true);
-      setTimeout(() => setShowSuccessToast(false), 5000);
-
-      // 4. Open in new tab
-      window.open(applyUrl, '_blank');
-    } catch (err) {
-      console.error("Failed to apply or redirect:", err);
-    } finally {
-      setActionLoading(false);
-    }
+    // Open target application URL synchronously and securely with noopener,noreferrer
+    window.open(applyUrl, '_blank', 'noopener,noreferrer');
   };
 
   const handleSubmitApply = async (e: React.FormEvent) => {

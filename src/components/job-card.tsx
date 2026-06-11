@@ -11,6 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { DbJob, saveJob, unsaveJob } from '@/lib/api-helper';
+import { trackVisitedJob } from '@/lib/visited-jobs';
 
 interface JobCardProps {
   job: DbJob;
@@ -53,6 +54,7 @@ export default function JobCard({
     if (target.closest('button') || target.closest('a') || target.closest('input')) {
       return;
     }
+    trackVisitedJob(job);
     router.push(`/jobs/${job._id}`);
   };
 
@@ -98,6 +100,7 @@ export default function JobCard({
 
   const handleApplyClick = (e: React.MouseEvent) => {
     e.stopPropagation();
+    trackVisitedJob(job);
     if (job.applyUrl) {
       window.open(job.applyUrl, "_blank", "noopener,noreferrer");
     } else {
