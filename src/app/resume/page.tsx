@@ -1,11 +1,12 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Upload, FileText, Download, Trash2, Eye,
   CheckCircle2, Clock, Star, Plus, RefreshCw, AlertCircle,
-  FileDown, BookOpen, UserCheck, ShieldAlert
+  FileDown, BookOpen, UserCheck, ShieldAlert, ArrowLeft
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -26,6 +27,7 @@ import {
 import { cn } from '@/lib/utils';
 
 export default function ResumePage() {
+  const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<DbUser | null>(null);
   const [profile, setProfile] = useState<DbProfile | null>(null);
@@ -273,6 +275,18 @@ export default function ResumePage() {
 
   return (
     <main className="flex-1 p-3 sm:p-4 lg:p-6 max-w-6xl mx-auto w-full">
+          {/* Back Button */}
+          <div className="mb-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => router.push('/dashboard')}
+              className="h-8 px-2.5 rounded-lg text-xs gap-1.5 text-muted-foreground hover:text-foreground hover:bg-muted/50 -ml-2 transition-all touch-auto"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" />
+              Back to Dashboard
+            </Button>
+          </div>
           <div className="mb-6 flex justify-between items-start">
             <div>
               <h1 className="text-2xl font-bold mb-1" style={{ fontFamily: 'Plus Jakarta Sans, sans-serif' }}>Resume Manager</h1>

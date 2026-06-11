@@ -1,12 +1,13 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import {
   User, MapPin, Briefcase, GraduationCap, Award, Code2,
   Plus, Edit3, Star, CheckCircle2,
   Link2, ExternalLink, Globe, Camera, Phone, Mail,
-  Cloud, Smartphone, Palette, Save, Trash2, Upload, FileText, Loader2, AlertCircle
+  Cloud, Smartphone, Palette, Save, Trash2, Upload, FileText, Loader2, AlertCircle, ArrowLeft
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -59,6 +60,7 @@ function SectionCard({
 }
 
 export default function ProfilePage() {
+  const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const avatarInputRef = useRef<HTMLInputElement>(null);
 
@@ -491,6 +493,18 @@ export default function ProfilePage() {
 
   return (
     <main className="flex-1 p-3 sm:p-4 lg:p-6 max-w-5xl mx-auto w-full space-y-4 lg:space-y-5">
+          {/* Back Button */}
+          <div className="mb-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => router.push('/dashboard')}
+              className="h-8 px-2.5 rounded-lg text-xs gap-1.5 text-muted-foreground hover:text-foreground hover:bg-muted/50 -ml-2 transition-all touch-auto"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" />
+              Back to Dashboard
+            </Button>
+          </div>
           <div className="mb-4 flex items-center justify-between">
             <div>
               <h1 className="text-2xl font-bold" style={{ fontFamily: 'Plus Jakarta Sans, sans-serif' }}>
