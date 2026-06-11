@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, after } from "next/server";
 import { runSourceSync } from "@/lib/pipeline";
 import { JobSource } from "@/lib/adapters/types";
 
@@ -47,8 +47,8 @@ export async function POST(req: NextRequest) {
     const keywords = isCustom ? customKeywords : (process.env.FETCH_KEYWORDS || "software engineer,frontend developer,backend developer").split(",");
     const sources: JobSource[] = ["linkedin", "indeed", "wellfound", "internshala"];
 
-    // Run crawler in the background without awaiting it to return 202 immediately
-    Promise.resolve().then(async () => {
+    // Run crawler in the background using after() to return 202 immediately but keep container alive
+    after(async () => {
       console.log("[Cron API Background] Starting sync cycle for sources:", sources, "keywords:", keywords);
       for (const source of sources) {
         try {

@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, after } from "next/server";
 import { connectDB } from "@/lib/mongodb";
 import Profile from "@/models/Profile";
 import User from "@/models/User";
@@ -7,6 +7,8 @@ import { parsePdf, parseDocx } from "@/lib/parser";
 import { extractSkillsWithGemini } from "@/lib/skills-extractor";
 import { extractProfileDetails } from "@/lib/profile-extractor";
 import { getOrCreateMongoUser } from "@/lib/auth-sync";
+import { runSourceSync } from "@/lib/pipeline";
+import { JobSource } from "@/lib/adapters/types";
 import fs from "fs";
 import path from "path";
 
@@ -199,11 +201,9 @@ export async function POST(req: NextRequest) {
     if (newSkillNames.length > 0) {
       console.log(`[Resume Upload] Triggering background scraper sync for new skills:`, newSkillNames);
       
-      // Run sequentially in background to not block response
-      Promise.resolve().then(async () => {
-        const { runSourceSync } = require("@/lib/pipeline");
-        const sources = ["linkedin", "indeed", "wellfound", "internshala"];
-        
+      // Use Next.js 15+ after() API to run background tasks after the response has finished sending
+      const sources: JobSource[] = ["linkedin", "indeed", "wellfound", "internshala"];
+      after(async () => {
         for (const source of sources) {
           try {
             console.log(`[Resume Upload Background] Syncing ${source} for skills:`, newSkillNames);
