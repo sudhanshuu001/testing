@@ -31,23 +31,22 @@ export async function getOrCreateMongoUser() {
       if (!profile) {
         await Profile.create({
           userId: user._id,
-          skills: [
-            { name: "React", level: 95 },
-            { name: "TypeScript", level: 90 },
-            { name: "Next.js", level: 88 }
-          ],
+          skills: [],
           experiences: [],
           education: [],
           certifications: [],
           projects: [],
-          headline: "Senior Frontend Engineer",
-          bio: "Passionate developer",
-          location: "Bengaluru",
-          experience: "5 years",
+          headline: "",
+          bio: "",
+          location: "",
+          experience: "",
           resumeUrl: "",
           resumeName: "",
           resumeText: "",
-          phone: "+91 98765 43210",
+          phone: "",
+          portfolioUrl: "",
+          githubUrl: "",
+          linkedinUrl: "",
         });
       }
     }
