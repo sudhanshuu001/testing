@@ -11,6 +11,18 @@ export class InternshalaAdapter implements SourceAdapter {
 
     console.log(`[Internshala Adapter] Starting scrape: ${url}`);
 
+    // If running on Vercel or in production, skip Puppeteer to avoid browser binary loading errors and timeouts
+    const isServerless = process.env.VERCEL || process.env.NEXT_RUNTIME === "edge" || process.env.NODE_ENV === "production";
+    if (isServerless) {
+      console.log(`[Internshala Adapter] Serverless or production environment detected. Skipping Puppeteer, utilizing Cheerio directly.`);
+      try {
+        return await this.scrapeWithCheerio(url);
+      } catch (cheerioErr: any) {
+        console.warn(`[Internshala Adapter] Cheerio failed (${cheerioErr.message}). Generating mock internships fallback...`);
+        return this.generateMockInternships(keyword);
+      }
+    }
+
     try {
       return await this.scrapeWithPuppeteer(url);
     } catch (err: any) {

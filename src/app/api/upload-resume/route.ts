@@ -117,9 +117,22 @@ export async function POST(req: NextRequest) {
       });
       resumeUrl = cloudinaryResult.secure_url;
       console.log(`[Resume Upload] Cloudinary upload successful. URL: ${resumeUrl}`);
-    } catch (cldError) {
-      console.warn("[Resume Upload] Cloudinary upload failed. Falling back to local storage saving.", cldError);
+    } catch (cldError: any) {
+      console.warn("[Resume Upload] Cloudinary upload failed.", cldError);
+
+      const isServerless = process.env.VERCEL || process.env.NEXT_RUNTIME === "edge" || process.env.NODE_ENV === "production";
+      if (isServerless) {
+        console.error("[Resume Upload] Cloudinary is not configured or failed to respond in a production/serverless environment. Local filesystem saving fallback is disabled to prevent crashes.");
+        return NextResponse.json(
+          { 
+            success: false, 
+            error: "Production file uploads require Cloudinary. Cloudinary upload failed and local storage fallback is disabled on serverless hosting. Please verify your environment variables." 
+          },
+          { status: 500 }
+        );
+      }
       
+      console.warn("[Resume Upload] Falling back to local storage saving.");
       const uploadsDir = path.join(process.cwd(), "public", "uploads");
       if (!fs.existsSync(uploadsDir)) {
         fs.mkdirSync(uploadsDir, { recursive: true });
